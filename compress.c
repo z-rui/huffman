@@ -123,7 +123,7 @@ int main()
 	_setmode(_fileno(stdout), _O_BINARY);
 #endif
 
-	BitIO_init(bitoutput, stdout, fgetc, fputc);
+	BitIO_init(bitoutput, stdout);
 	HE_init(e, MAXCHARS, nodealloc, heapalloc);
 
 	makedict(&mc);	/* 1st pass reading stdin */

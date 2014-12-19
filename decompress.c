@@ -93,7 +93,7 @@ int main()
 	_setmode(_fileno(stdin), _O_BINARY);
 	_setmode(_fileno(stdout), _O_BINARY);
 #endif
-	BitIO_init(bitinput, stdin, fgetc, fputc);
+	BitIO_init(bitinput, stdin);
 
 	hufftree = parsedict(bitinput);
 	translate(bitinput, hufftree);
