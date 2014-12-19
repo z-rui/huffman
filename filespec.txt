@@ -1,0 +1,19 @@
+/* FILE FORMAT */
+
+file ::= dict content.
+dict ::= dict-entry BIT1.
+dict-entry ::= BIT0 byte.
+dict-entry ::= dict-entry dict-entry BIT1.
+byte ::= NONZERO-BYTE.
+byte ::= ZERO-BYTE bit.
+content ::= { bit }.
+bit ::= BIT0 | BIT1.
+
+/* COMMENTS */
+
+/* 'dict' stores the huffman tree which can be restored by a parser.
+ * 'content' consists of huffman code, and is padded with zero-bits,
+ * after the pattern for EOF.
+ * ZERO-BYTE BIT0 --> '\0'.
+ * ZERO-BYTE BIT1 --> EOF.
+ */
