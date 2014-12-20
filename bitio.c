@@ -31,7 +31,7 @@ int BitIOBuf_read_byte(BitIOBuf *b)
 {
 	int r;
 
-	r = (b->s[0] << b->bitcnt) | (b->s[1] >> (CHAR_BIT - b->bitcnt));
+	r = (unsigned char) (b->s[0] << b->bitcnt) | (b->s[1] >> (CHAR_BIT - b->bitcnt));
 	++b->s;
 	return r;
 }
@@ -71,6 +71,8 @@ int BitIO_read_byte(BitIO *i)
 {
 	int r;
 
+	if (!i->buf.bitcnt)
+		return fgetc(i->f); /* in case i->buf.s == &i->byte[0] */
 	i->byte[1] = fgetc(i->f);
 	r = BitIOBuf_read_byte(&i->buf);
 	i->buf.s = i->byte;
