@@ -2,57 +2,106 @@
 
 #include "bitio.h"
 
+void BitIOBuf_init(BitIOBuf *b, unsigned char *s)
+{
+	b->s = s;
+	b->bitcnt = 0;
+}
+
+void BitIOBuf_flush(BitIOBuf *b)
+{
+	if (b->bitcnt) {
+		++b->s;
+		b->bitcnt = 0;
+	}
+}
+
+int BitIOBuf_read(BitIOBuf *b)
+{
+	int r;
+
+	r = *b->s & (1 << (CHAR_BIT - ++b->bitcnt));
+	if (b->bitcnt == CHAR_BIT) { /* have read an entire byte */
+		BitIOBuf_flush(b); /* look for next byte */
+	}
+	return !!r;
+}
+
+int BitIOBuf_read_byte(BitIOBuf *b)
+{
+	int r;
+
+	r = (b->s[0] << b->bitcnt) | (b->s[1] >> (CHAR_BIT - b->bitcnt));
+	++b->s;
+	return r;
+}
+
+void BitIOBuf_write(BitIOBuf *b, int bit)
+{
+	*b->s |= bit << (CHAR_BIT - ++b->bitcnt);
+	if (b->bitcnt == CHAR_BIT) { /* have written an entire byte */
+		BitIOBuf_flush(b); /* look for next byte */
+	}
+}
+
+void BitIOBuf_write_byte(BitIOBuf *b, int byte)
+{
+	*b->s++ |= byte >> b->bitcnt;
+	*b->s = byte << (CHAR_BIT - b->bitcnt);
+}
+
 void BitIO_init(BitIO *io, FILE *f)
 {
 	io->f = f;
-	io->byte = 0;
-	io->bitcnt = 0;
+	BitIOBuf_init(&io->buf, io->byte);
+	io->byte[0] = 0;
+	io->byte[1] = 0;
 }
 
 int BitIO_read(BitIO *i)
 {
-	int r;
-
-	if (!i->bitcnt) {
-		i->byte = fgetc(i->f);
-		i->bitcnt = CHAR_BIT;
+	if (!i->buf.bitcnt) {
+		i->buf.s = i->byte;
+		i->byte[0] = fgetc(i->f);
 	}
-	r = i->byte >> (CHAR_BIT - 1);
-	i->byte <<= 1;
-	--i->bitcnt;
-	return r;
+	return BitIOBuf_read(&i->buf);
 }
 
 int BitIO_read_byte(BitIO *i)
 {
 	int r;
-	int nextbyte;
 
-	nextbyte = fgetc(i->f);
-	r = i->byte | (nextbyte >> i->bitcnt);
-	i->byte = nextbyte << (CHAR_BIT - i->bitcnt);
+	i->byte[1] = fgetc(i->f);
+	r = BitIOBuf_read_byte(&i->buf);
+	i->buf.s = i->byte;
+	i->byte[0] = i->byte[1];
 	return r;
 }
 
 void BitIO_write(BitIO *o, int bit)
 {
-	o->byte |= bit << (CHAR_BIT - 1 - o->bitcnt);
-	if (++o->bitcnt == CHAR_BIT) {
-		BitIO_flush(o);
+	BitIOBuf_write(&o->buf, bit);
+	if (!o->buf.bitcnt) {
+		fputc(o->byte[0], o->f);
+		o->buf.s = o->byte;
+		o->byte[0] = 0;
 	}
 }
 
 void BitIO_write_byte(BitIO *o, int byte)
 {
-	fputc(o->byte | (byte >> o->bitcnt), o->f);
-	o->byte = byte << (CHAR_BIT - o->bitcnt);
+	BitIOBuf_write_byte(&o->buf, byte);
+	fputc(o->byte[0], o->f);
+	o->buf.s = o->byte;
+	o->byte[0] = o->byte[1];
 }
 
 void BitIO_flush(BitIO *o)
 {
-	if (o->bitcnt) {
-		fputc(o->byte, o->f);
-		o->byte = 0;
-		o->bitcnt = 0;
+	BitIOBuf_flush(&o->buf);
+	if (o->buf.s == &o->byte[1]) { /* buffer full */
+		fputc(o->byte[0], o->f);
+		o->buf.s = o->byte;
+		o->byte[0] = 0;
 	}
 }

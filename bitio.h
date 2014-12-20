@@ -1,9 +1,14 @@
 #include <stdio.h>
 
 typedef struct {
+	unsigned char *s;
+	size_t bitcnt;	/* bit already read/write in *s (<CHAR_BIT) */
+} BitIOBuf;
+
+typedef struct {
 	FILE *f;
-	unsigned char byte;
-	size_t bitcnt;
+	BitIOBuf buf;
+	unsigned char byte[2];
 } BitIO;
 
 extern void BitIO_init      (BitIO *, FILE *);
